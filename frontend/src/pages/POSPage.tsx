@@ -3,6 +3,14 @@ import type { Product } from '../types';
 import type { BusinessSettings } from '../api/client';
 import { fetchProducts, createSale, fetchBusinessSettings } from '../api/client';
 import { useNavigate } from 'react-router-dom';
+import {
+  queueSale,
+  isNetworkError,
+  trySyncPendingSales,
+  getPendingSales,
+  getLocalStockAdjustments,
+} from '../api/offlineSync';
+import Loading from '../components/Loading';
 
 interface CartItem {
   product: Product;
@@ -19,6 +27,7 @@ export default function POSPage() {
   const [amountTendered, setAmountTendered] = useState('');
   const [loading, setLoading] = useState(true);
   const [checkoutError, setCheckoutError] = useState('');
+  const [pendingCount, setPendingCount] = useState(getPendingSales().length);
 
   useEffect(() => {
     Promise.all([fetchProducts(), fetchBusinessSettings()])
@@ -28,17 +37,44 @@ export default function POSPage() {
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
+
+    attemptSync();
+    window.addEventListener('online', attemptSync);
+    const interval = setInterval(attemptSync, 30000);
+
+    return () => {
+      window.removeEventListener('online', attemptSync);
+      clearInterval(interval);
+    };
   }, []);
+
+  function attemptSync() {
+    trySyncPendingSales((count) => {
+      setPendingCount(getPendingSales().length);
+      fetchProducts().then(setProducts).catch(() => {});
+      if (count > 0) {
+        console.log(`Synced ${count} queued sale(s).`);
+      }
+    });
+    setPendingCount(getPendingSales().length);
+  }
+
+  const localAdjustments = getLocalStockAdjustments();
 
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  function availableStock(product: Product): number {
+    const reserved = localAdjustments[product.id] || 0;
+    return product.quantity - reserved;
+  }
+
   function addToCart(product: Product) {
     setCart((prevCart) => {
       const existing = prevCart.find((item) => item.product.id === product.id);
       const currentQty = existing ? existing.quantity : 0;
-      if (currentQty >= product.quantity) return prevCart;
+      if (currentQty >= availableStock(product)) return prevCart;
 
       if (existing) {
         return prevCart.map((item) =>
@@ -55,7 +91,7 @@ export default function POSPage() {
     setCart((prevCart) =>
       prevCart.map((item) => {
         if (item.product.id !== productId) return item;
-        if (item.quantity >= item.product.quantity) return item;
+        if (item.quantity >= availableStock(item.product)) return item;
         return { ...item, quantity: item.quantity + 1 };
       })
     );
@@ -87,6 +123,13 @@ export default function POSPage() {
 
   async function handleCheckout() {
     setCheckoutError('');
+    const receiptItems = cart.map((item) => ({
+      name: item.product.name,
+      quantity: item.quantity,
+      price: parseFloat(item.product.price),
+    }));
+    const receiptTotal = total;
+
     try {
       await createSale(
         paymentMethod,
@@ -95,26 +138,40 @@ export default function POSPage() {
           quantity: item.quantity,
         }))
       );
-      const receiptItems = cart.map((item) => ({
-        name: item.product.name,
-        quantity: item.quantity,
-        price: parseFloat(item.product.price),
-      }));
-      const receiptTotal = total;
       setCart([]);
       setAmountTendered('');
       navigate('/receipt', {
-        state: { items: receiptItems, total: receiptTotal, paymentMethod },
+        state: { items: receiptItems, total: receiptTotal, paymentMethod, pending: false },
       });
     } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
+      if (isNetworkError(err)) {
+        queueSale(
+          paymentMethod,
+          cart.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            productName: item.product.name,
+            price: parseFloat(item.product.price),
+          })),
+          total
+        );
+        setPendingCount(getPendingSales().length);
+        setCart([]);
+        setAmountTendered('');
+        navigate('/receipt', {
+          state: { items: receiptItems, total: receiptTotal, paymentMethod, pending: true },
+        });
+      } else {
+        setCheckoutError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
+      }
     }
   }
 
   if (loading) {
     return (
       <div className="page">
-        <p className="empty-state">Loading products...</p>
+        <h1>POS</h1>
+        <Loading text="Loading products..." />
       </div>
     );
   }
@@ -124,6 +181,13 @@ export default function POSPage() {
       <div className="pos-header">
         <p className="pos-business-name">{business?.business_name || 'POS'}</p>
       </div>
+
+      {pendingCount > 0 && (
+        <div className="sync-banner">
+          <span className="sync-banner-text">{pendingCount} sale(s) waiting to sync</span>
+          <button className="sync-now-btn" onClick={attemptSync}>Sync Now</button>
+        </div>
+      )}
 
       <input
         className="search-input"
@@ -140,7 +204,7 @@ export default function POSPage() {
         <div className="product-grid">
           {filteredProducts.map((product) => {
             const inCart = cart.find((item) => item.product.id === product.id);
-            const remaining = product.quantity - (inCart?.quantity ?? 0);
+            const remaining = availableStock(product) - (inCart?.quantity ?? 0);
             return (
               <button
                 key={product.id}

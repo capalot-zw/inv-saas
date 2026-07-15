@@ -4,6 +4,7 @@ import type { Product } from '../types';
 import { fetchAllSales, fetchProducts, fetchTopProducts, logout } from '../api/client';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Receipt, Package } from 'lucide-react';
+import Loading from '../components/Loading';
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -12,6 +13,7 @@ export default function DashboardPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -21,7 +23,8 @@ export default function DashboardPage() {
         setProducts(productsData);
         setTopProducts(topData);
       })
-      .catch(() => setError('Failed to load dashboard data. You may not have permission.'));
+      .catch(() => setError('Failed to load dashboard data. You may not have permission.'))
+      .finally(() => setLoading(false));
   }, []);
 
   const totalUnits = products.reduce((sum, p) => sum + p.quantity, 0);
@@ -59,6 +62,15 @@ export default function DashboardPage() {
   function handleLogout() {
     logout();
     navigate('/');
+  }
+
+  if (loading) {
+    return (
+      <div className="page">
+        <h1>Dashboard</h1>
+        <Loading text="Loading dashboard..." />
+      </div>
+    );
   }
 
   return (

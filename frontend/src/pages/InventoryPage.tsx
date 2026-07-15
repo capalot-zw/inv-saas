@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import type { Product } from '../types';
 import { fetchProducts, updateProductStock } from '../api/client';
+import Loading from '../components/Loading';
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [newQuantity, setNewQuantity] = useState('');
@@ -13,9 +15,11 @@ export default function InventoryPage() {
   }, []);
 
   function loadProducts() {
+    setLoading(true);
     fetchProducts()
       .then(setProducts)
-      .catch(() => setError('Failed to load products'));
+      .catch(() => setError('Failed to load products'))
+      .finally(() => setLoading(false));
   }
 
   function startEditing(product: Product) {
@@ -31,6 +35,15 @@ export default function InventoryPage() {
     } catch (err) {
       setError('Failed to update stock. You may not have permission.');
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="page">
+        <h1>Inventory</h1>
+        <Loading text="Loading inventory..." />
+      </div>
+    );
   }
 
   return (

@@ -1,13 +1,10 @@
 import type { Product } from '../types';
 
-const BASE_URL = 'http://127.0.0.1:8000/api';
+const BASE_URL = 'https://inv-saas.onrender.com/api';
 
-export async function fetchProducts(): Promise<Product[]> {
-  const response = await fetch(`${BASE_URL}/products/`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch products');
-  }
-  return response.json();
+function getAuthHeaders() {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Token ${token}` } : {};
 }
 
 export async function login(username: string, password: string): Promise<string> {
@@ -23,10 +20,49 @@ export async function login(username: string, password: string): Promise<string>
   return data.token;
 }
 
-function getAuthHeaders() {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Token ${token}` } : {};
+export interface CurrentUser {
+  username: string;
+  role: string;
 }
+
+export async function fetchCurrentUser(): Promise<CurrentUser> {
+  const response = await fetch(`${BASE_URL}/users/me/`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch current user');
+  }
+  return response.json();
+}
+
+export function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+}
+
+export async function fetchProducts(): Promise<Product[]> {
+  const response = await fetch(`${BASE_URL}/products/`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch products');
+  }
+  return response.json();
+}
+
+export async function updateProductStock(productId: number, quantity: number): Promise<Product> {
+  const response = await fetch(`${BASE_URL}/products/${productId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ quantity }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update stock');
+  }
+  return response.json();
+}
+
 export async function createSale(
   paymentMethod: string,
   items: { productId: number; quantity: number }[]
@@ -71,42 +107,12 @@ export async function fetchMySales(): Promise<Sale[]> {
   return response.json();
 }
 
-export interface CurrentUser {
-  username: string;
-  role: string;
-}
-
-export async function fetchCurrentUser(): Promise<CurrentUser> {
-  const response = await fetch(`${BASE_URL}/users/me/`, {
-    headers: { ...getAuthHeaders() },
-  });
-  if (!response.ok) {
-    throw new Error('Failed to fetch current user');
-  }
-  return response.json();
-}
-
 export async function fetchAllSales(): Promise<Sale[]> {
   const response = await fetch(`${BASE_URL}/sales/all/`, {
     headers: { ...getAuthHeaders() },
   });
   if (!response.ok) {
     throw new Error('Failed to fetch all sales');
-  }
-  return response.json();
-}
-
-export async function updateProductStock(productId: number, quantity: number): Promise<Product> {
-  const response = await fetch(`${BASE_URL}/products/${productId}/`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders(),
-    },
-    body: JSON.stringify({ quantity }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to update stock');
   }
   return response.json();
 }
@@ -136,9 +142,4 @@ export async function fetchTopProducts(): Promise<TopProduct[]> {
   });
   if (!response.ok) throw new Error('Failed to fetch top products');
   return response.json();
-}
-
-export function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('role');
 }

@@ -83,6 +83,11 @@ export default function ReceiptPage() {
   return (
     <div className="page">
       <div className="receipt-paper">
+        {state.pending && (
+  <div className="receipt-pending-banner">
+    ⚠ Offline — will sync when connection returns
+  </div>
+)}
         <div className="receipt-business-name">
           {business?.business_name || 'Your Business'}
         </div>
