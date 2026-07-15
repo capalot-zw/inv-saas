@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { BusinessSettings } from '../api/client';
 import { fetchBusinessSettings } from '../api/client';
+import { ReceiptBuilder, connectPrinter, sendToPrinter, isPrinterConnected } from '../api/printer';
 
 interface ReceiptItem {
   name: string;
@@ -20,6 +21,7 @@ export default function ReceiptPage() {
   const navigate = useNavigate();
   const state = location.state as ReceiptState | null;
   const [business, setBusiness] = useState<BusinessSettings | null>(null);
+  const [printStatus, setPrintStatus] = useState('');
 
   useEffect(() => {
     fetchBusinessSettings().then(setBusiness);
@@ -35,6 +37,48 @@ export default function ReceiptPage() {
   }
 
   const { items, total, paymentMethod } = state;
+
+  async function handlePrint() {
+    setPrintStatus('Connecting...');
+    try {
+      if (!isPrinterConnected()) {
+        await connectPrinter();
+      }
+      const receipt = new ReceiptBuilder()
+        .init()
+        .center()
+        .doubleSize(true)
+        .bold(true)
+        .text(business?.business_name || 'Receipt')
+        .newline()
+        .doubleSize(false)
+        .bold(false);
+
+      if (business?.receipt_header) {
+        receipt.text(business.receipt_header).newline();
+      }
+      receipt.left().divider();
+
+      items.forEach((item) => {
+        receipt.text(`${item.name} x${item.quantity}`).newline();
+        receipt.text(`  $${(item.price * item.quantity).toFixed(2)}`).newline();
+      });
+
+      receipt.divider();
+      receipt.bold(true).text(`Total: $${total.toFixed(2)}`).newline().bold(false);
+      receipt.text(`Payment: ${paymentMethod}`).newline();
+
+      if (business?.receipt_footer) {
+        receipt.newline().center().text(business.receipt_footer).newline();
+      }
+      receipt.cut();
+
+      await sendToPrinter(receipt.build());
+      setPrintStatus('Printed!');
+    } catch (err) {
+      setPrintStatus(err instanceof Error ? err.message : 'Print failed.');
+    }
+  }
 
   return (
     <div className="page">
@@ -75,6 +119,9 @@ export default function ReceiptPage() {
 
         <div className="receipt-meta">{new Date().toLocaleString()}</div>
       </div>
+
+      <button className="checkout-btn" onClick={handlePrint}>Print Receipt</button>
+      {printStatus && <p className="empty-state">{printStatus}</p>}
 
       <button className="checkout-btn" onClick={() => navigate('/pos')}>New Sale</button>
     </div>

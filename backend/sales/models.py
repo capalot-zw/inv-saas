@@ -11,7 +11,7 @@ class Sale(models.Model):
       ('ecocash', 'EcoCash')
     ]
     
-  cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+  cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
   total = models.DecimalField(max_digits=10, decimal_places=2)
   payment_method = models.CharField(max_length=15, choices=PAYMENT_CHOICES, default='cash')
   time_stamp= models.DateTimeField(auto_now_add=True)
@@ -19,8 +19,8 @@ class Sale(models.Model):
   
 
 class SaleItem(models.Model):
-  sale = models.ForeignKey(Sale, on_delete=models.CASCADE)
-  product = models.ForeignKey(Product, on_delete=models.CASCADE)
+  sale = models.ForeignKey(Sale, on_delete=models.PROTECT)
+  product = models.ForeignKey(Product, on_delete=models.PROTECT)
   quantity = models.IntegerField()
   price_at_sale = models.DecimalField(max_digits=10, decimal_places=2)
   

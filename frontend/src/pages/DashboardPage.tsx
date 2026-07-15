@@ -1,21 +1,25 @@
 import { useState, useEffect } from 'react';
-import type { Sale } from '../api/client';
+import type { Sale, TopProduct } from '../api/client';
 import type { Product } from '../types';
-import { fetchAllSales, fetchProducts } from '../api/client';
-import { Link } from 'react-router-dom';
+import { fetchAllSales, fetchProducts, fetchTopProducts, logout } from '../api/client';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Receipt, Package } from 'lucide-react';
 
 const LOW_STOCK_THRESHOLD = 10;
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([fetchAllSales(), fetchProducts()])
-      .then(([salesData, productsData]) => {
+    Promise.all([fetchAllSales(), fetchProducts(), fetchTopProducts()])
+      .then(([salesData, productsData, topData]) => {
         setSales(salesData);
         setProducts(productsData);
+        setTopProducts(topData);
       })
       .catch(() => setError('Failed to load dashboard data. You may not have permission.'));
   }, []);
@@ -38,31 +42,73 @@ export default function DashboardPage() {
   });
   const maxCategoryUnits = Math.max(...Object.values(unitsByCategory), 1);
 
+  const last7Days: { label: string; total: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toDateString();
+    const dayTotal = sales
+      .filter((s) => new Date(s.time_stamp).toDateString() === dateStr)
+      .reduce((sum, s) => sum + parseFloat(s.total), 0);
+    last7Days.push({ label: d.toLocaleDateString(undefined, { weekday: 'short' }), total: dayTotal });
+  }
+  const maxDayTotal = Math.max(...last7Days.map((d) => d.total), 1);
+
   const recentSales = sales.slice(0, 5);
+
+  function handleLogout() {
+    logout();
+    navigate('/');
+  }
 
   return (
     <div className="page">
       <h1>Dashboard</h1>
 
       <div className="dashboard-nav">
-        <Link to="/pos">Point of Sale</Link>
-        <Link to="/sales-history">Sales History</Link>
-        <Link to="/inventory">Inventory</Link>
+        <Link to="/pos">
+          <span className="nav-pill-icon"><ShoppingCart size={15} /> Point of Sale</span>
+        </Link>
+        <Link to="/sales-history">
+          <span className="nav-pill-icon"><Receipt size={15} /> Sales History</span>
+        </Link>
+        <Link to="/inventory">
+          <span className="nav-pill-icon"><Package size={15} /> Inventory</span>
+        </Link>
+        <button
+          className="nav-pill-icon"
+          style={{
+            background: 'var(--white)',
+            border: '1px solid var(--green-light)',
+            borderRadius: '20px',
+            padding: '0.5rem 1rem',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            color: 'var(--danger)',
+          }}
+          onClick={handleLogout}
+        >
+          Log Out
+        </button>
       </div>
 
       {error && <p className="error-text">{error}</p>}
 
       <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-card-label">Total Products</div>
-          <div className="stat-card-value">{products.length}</div>
-          <div className="stat-card-sub">Across {categories.size} categories</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-label">Total Units</div>
-          <div className="stat-card-value">{totalUnits}</div>
-          <div className="stat-card-sub">Items currently in stock</div>
-        </div>
+        <Link to="/inventory" className="stat-card-link">
+          <div className="stat-card">
+            <div className="stat-card-label">Total Products</div>
+            <div className="stat-card-value">{products.length}</div>
+            <div className="stat-card-sub">Across {categories.size} categories</div>
+          </div>
+        </Link>
+        <Link to="/inventory" className="stat-card-link">
+          <div className="stat-card">
+            <div className="stat-card-label">Total Units</div>
+            <div className="stat-card-value">{totalUnits}</div>
+            <div className="stat-card-sub">Items currently in stock</div>
+          </div>
+        </Link>
       </div>
 
       {lowStockProducts.length > 0 && (
@@ -83,17 +129,51 @@ export default function DashboardPage() {
       )}
 
       <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-card-label">Today's Sales</div>
-          <div className="stat-card-value">${todaysTotal.toFixed(2)}</div>
-          <div className="stat-card-sub">{todaysSales.length} transactions today</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-label">Stock Health</div>
-          <div className="stat-card-value">{healthyPercent}%</div>
-          <div className="stat-card-sub">Products at healthy stock levels</div>
+        <Link to="/sales-history" className="stat-card-link">
+          <div className="stat-card">
+            <div className="stat-card-label">Today's Sales</div>
+            <div className="stat-card-value">${todaysTotal.toFixed(2)}</div>
+            <div className="stat-card-sub">{todaysSales.length} transactions today</div>
+          </div>
+        </Link>
+        <Link to="/inventory" className="stat-card-link">
+          <div className="stat-card">
+            <div className="stat-card-label">Stock Health</div>
+            <div className="stat-card-value">{healthyPercent}%</div>
+            <div className="stat-card-sub">Products at healthy stock levels</div>
+          </div>
+        </Link>
+      </div>
+
+      <div className="section-card">
+        <h2 style={{ marginTop: 0 }}>Last 7 Days</h2>
+        <div className="trend-chart">
+          {last7Days.map((day, i) => (
+            <div key={i} className="trend-bar-wrap">
+              <div
+                className="trend-bar"
+                style={{ height: `${(day.total / maxDayTotal) * 100}%` }}
+              />
+              <span className="trend-bar-label">{day.label}</span>
+            </div>
+          ))}
         </div>
       </div>
+
+      {topProducts.length > 0 && (
+        <div className="section-card">
+          <h2 style={{ marginTop: 0 }}>Top Selling Products</h2>
+          {topProducts.map((tp, i) => (
+            <div key={tp.product__id} className="top-product-row">
+              <span>
+                <span className="top-product-rank">{i + 1}</span>
+                {tp.product__name}
+              </span>
+              <span>{tp.total_sold} sold</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="section-card">
         <h2 style={{ marginTop: 0 }}>Inventory by Category</h2>

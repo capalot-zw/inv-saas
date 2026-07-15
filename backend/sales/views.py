@@ -88,3 +88,17 @@ class AllSalesView(generics.ListAPIView):
     queryset = Sale.objects.all().order_by('-time_stamp')
     serializer_class = SaleSerializer
     permission_classes = [permissions.IsAuthenticated, IsManagerOrAdmin]
+    
+from django.db.models import Sum
+from .permissions import IsManagerOrAdmin
+
+class TopProductsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsManagerOrAdmin]
+
+    def get(self, request):
+        top = (
+            SaleItem.objects.values('product__id', 'product__name')
+            .annotate(total_sold=Sum('quantity'))
+            .order_by('-total_sold')[:5]
+        )
+        return Response(list(top))    

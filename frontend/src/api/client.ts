@@ -123,3 +123,22 @@ export async function fetchBusinessSettings(): Promise<BusinessSettings | null> 
   const data = await response.json();
   return data.length > 0 ? data[0] : null;
 }
+
+export interface TopProduct {
+  product__id: number;
+  product__name: string;
+  total_sold: number;
+}
+
+export async function fetchTopProducts(): Promise<TopProduct[]> {
+  const response = await fetch(`${BASE_URL}/sales/top-products/`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!response.ok) throw new Error('Failed to fetch top products');
+  return response.json();
+}
+
+export function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+}
