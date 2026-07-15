@@ -29,7 +29,9 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com']
 
-CSRF_TRUSTED_ORIGINS = ['https://inv-saas.onrender.com']
+CSRF_TRUSTED_ORIGINS = ['https://inv-saas.onrender.com',
+  "https://vetmas-pos.onrender.com"
+]
 
 
 # Application definition
@@ -135,6 +137,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    "https://vetmas-pos.onrender.com"
 ]
 
 REST_FRAMEWORK = {
