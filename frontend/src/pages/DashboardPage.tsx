@@ -3,7 +3,7 @@ import type { Sale, TopProduct } from '../api/client';
 import type { Product } from '../types';
 import { fetchAllSales, fetchProducts, fetchTopProducts, logout } from '../api/client';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Receipt, Package } from 'lucide-react';
+import { ShoppingCart, Receipt, Package, Users } from 'lucide-react';
 import Loading from '../components/Loading';
 
 const LOW_STOCK_THRESHOLD = 10;
@@ -86,6 +86,9 @@ export default function DashboardPage() {
         </Link>
         <Link to="/inventory">
           <span className="nav-pill-icon"><Package size={15} /> Inventory</span>
+        </Link>
+        <Link to="/staff">
+          <span className="nav-pill-icon"><Users size={15} /> Staff</span>
         </Link>
         <button
           className="nav-pill-icon"

@@ -63,6 +63,41 @@ export async function updateProductStock(productId: number, quantity: number): P
   return response.json();
 }
 
+export interface NewProduct {
+  name: string;
+  quantity: number;
+  price: number;
+  sku: string;
+  category?: string;
+  description?: string;
+}
+
+export async function createProduct(product: NewProduct): Promise<Product> {
+  const response = await fetch(`${BASE_URL}/products/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(product),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+  return response.json();
+}
+
+export async function deleteProduct(productId: number): Promise<void> {
+  const response = await fetch(`${BASE_URL}/products/${productId}/`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete product');
+  }
+}
+
 export async function createSale(
   paymentMethod: string,
   items: { productId: number; quantity: number }[]
@@ -142,4 +177,60 @@ export async function fetchTopProducts(): Promise<TopProduct[]> {
   });
   if (!response.ok) throw new Error('Failed to fetch top products');
   return response.json();
+}
+
+export interface StaffUser {
+  id: number;
+  username: string;
+  role: string;
+}
+
+export async function fetchStaff(): Promise<StaffUser[]> {
+  const response = await fetch(`${BASE_URL}/users/`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!response.ok) throw new Error('Failed to fetch staff');
+  return response.json();
+}
+
+export async function createStaff(username: string, password: string, role: string): Promise<StaffUser> {
+  const response = await fetch(`${BASE_URL}/users/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ username, password, role }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+  return response.json();
+}
+
+export async function updateStaffRole(userId: number, role: string): Promise<StaffUser> {
+  const response = await fetch(`${BASE_URL}/users/${userId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ role }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update role');
+  }
+  return response.json();
+}
+
+export async function deleteStaff(userId: number): Promise<void> {
+  const response = await fetch(`${BASE_URL}/users/${userId}/`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() },
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to delete user');
+  }
 }

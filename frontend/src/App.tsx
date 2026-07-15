@@ -7,6 +7,9 @@ import ReceiptPage from './pages/ReceiptPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import InventoryPage from './pages/InventoryPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import StaffManagementPage from './pages/StaffManagementPage';
+
+
 
 function App() {
   return (
@@ -63,6 +66,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+  path="/staff"
+  element={
+    <ProtectedRoute allowedRoles={['manager', 'admin']}>
+      <StaffManagementPage />
+    </ProtectedRoute>
+  }
+/>
       </Routes>
     </BrowserRouter>
   );
