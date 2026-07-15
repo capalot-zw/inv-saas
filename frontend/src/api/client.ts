@@ -2,11 +2,10 @@ import type { Product } from '../types';
 
 const BASE_URL = 'https://inv-saas.onrender.com/api';
 
-function getAuthHeaders() {
+function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Token ${token}` } : {};
 }
-
 export async function login(username: string, password: string): Promise<string> {
   const response = await fetch(`${BASE_URL}/login/`, {
     method: 'POST',
