@@ -161,6 +161,7 @@ export async function fetchAllSales(): Promise<Sale[]> {
 
 export interface BusinessSettings {
   business_name: string;
+  logo: string | null;
   receipt_header: string | null;
   receipt_footer: string | null;
 }
