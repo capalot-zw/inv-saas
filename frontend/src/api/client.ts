@@ -6,6 +6,16 @@ function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Token ${token}` } : {};
 }
+
+async function parseErrorResponse(response: Response): Promise<string> {
+  try {
+    const data = await response.json();
+    return data.error || JSON.stringify(data);
+  } catch {
+    return `Server error (${response.status})`;
+  }
+}
+
 export async function login(username: string, password: string): Promise<string> {
   const response = await fetch(`${BASE_URL}/login/`, {
     method: 'POST',
@@ -57,7 +67,7 @@ export async function updateProductStock(productId: number, quantity: number): P
     body: JSON.stringify({ quantity }),
   });
   if (!response.ok) {
-    throw new Error('Failed to update stock');
+    throw new Error(await parseErrorResponse(response));
   }
   return response.json();
 }
@@ -81,8 +91,7 @@ export async function createProduct(product: NewProduct): Promise<Product> {
     body: JSON.stringify(product),
   });
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(JSON.stringify(errorData));
+    throw new Error(await parseErrorResponse(response));
   }
   return response.json();
 }
@@ -93,7 +102,7 @@ export async function deleteProduct(productId: number): Promise<void> {
     headers: { ...getAuthHeaders() },
   });
   if (!response.ok) {
-    throw new Error('Failed to delete product');
+    throw new Error(await parseErrorResponse(response));
   }
 }
 
@@ -117,8 +126,7 @@ export async function createSale(
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Checkout failed');
+    throw new Error(await parseErrorResponse(response));
   }
 }
 
@@ -202,8 +210,7 @@ export async function createStaff(username: string, password: string, role: stri
     body: JSON.stringify({ username, password, role }),
   });
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(JSON.stringify(errorData));
+    throw new Error(await parseErrorResponse(response));
   }
   return response.json();
 }
@@ -218,9 +225,23 @@ export async function updateStaffRole(userId: number, role: string): Promise<Sta
     body: JSON.stringify({ role }),
   });
   if (!response.ok) {
-    throw new Error('Failed to update role');
+    throw new Error(await parseErrorResponse(response));
   }
   return response.json();
+}
+
+export async function resetStaffPassword(userId: number, newPassword: string): Promise<void> {
+  const response = await fetch(`${BASE_URL}/users/${userId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ password: newPassword }),
+  });
+  if (!response.ok) {
+    throw new Error(await parseErrorResponse(response));
+  }
 }
 
 export async function deleteStaff(userId: number): Promise<void> {
@@ -229,7 +250,6 @@ export async function deleteStaff(userId: number): Promise<void> {
     headers: { ...getAuthHeaders() },
   });
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to delete user');
+    throw new Error(await parseErrorResponse(response));
   }
 }
