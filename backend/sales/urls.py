@@ -1,5 +1,11 @@
 from django.urls import path
-from .views import SaleListCreateView, SaleItemListCreateView, CheckoutView, AllSalesView, TopProductsView
+from .views import (
+    SaleListCreateView,
+    SaleItemListCreateView,
+    CheckoutView,
+    AllSalesView,
+    TopProductsView,
+)
 
 urlpatterns = [
     path('sales/', SaleListCreateView.as_view(), name='sale-list-create'),

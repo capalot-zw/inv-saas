@@ -130,6 +130,14 @@ export async function createSale(
   }
 }
 
+export interface SaleItemDetail {
+  id: number;
+  product: number;
+  product_name: string;
+  quantity: number;
+  price_at_sale: string;
+}
+
 export interface Sale {
   id: number;
   total: string;
@@ -137,6 +145,8 @@ export interface Sale {
   time_stamp: string;
   synced: boolean;
   cashier: number;
+  cashier_username?: string;
+  items: SaleItemDetail[];
 }
 
 export async function fetchMySales(): Promise<Sale[]> {
